@@ -1,0 +1,12 @@
+.{
+    .name = .cargo_dep_graph,
+    .version = "0.1.0",
+    .fingerprint = 0xdf4057eee6109093,
+    .minimum_zig_version = "0.17.0",
+    .paths = .{
+        "build.zig",
+        "build.zig.zon",
+        "src",
+        "tests",
+    },
+}
