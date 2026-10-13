@@ -1,5 +1,5 @@
 const std = @import("std");
-const config_parser = @import("config_parser.zig");
+const config_parser = @import("config_parser");
 
 /// CLI application entry point.
 pub fn main(init: std.process.Init) !void {
