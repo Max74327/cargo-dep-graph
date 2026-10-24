@@ -1,0 +1,9 @@
+package_name: A
+repository_url: ""
+test_mode: true
+test_repo_path: tests/fixtures/graph_acyclic.txt
+ascii_tree: true
+filter_substring: ""
+max_depth: 0
+reverse: false
+recursive: false

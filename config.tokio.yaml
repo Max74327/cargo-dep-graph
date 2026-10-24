@@ -1,0 +1,9 @@
+package_name: tokio
+repository_url: "https://github.com/tokio-rs/tokio"
+test_mode: false
+test_repo_path: ""
+ascii_tree: false
+filter_substring: "web-sys"
+max_depth: 3
+reverse: false
+recursive: true

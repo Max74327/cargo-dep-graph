@@ -35,11 +35,14 @@ func visibleDeps(g *graph.Graph, name string) []string {
 	if n == nil {
 		return nil
 	}
+	seen := make(map[string]bool, len(n.Dependencies))
 	var deps []string
 	for _, dep := range n.Dependencies {
-		if !g.IsHidden(dep) {
-			deps = append(deps, dep)
+		if g.IsHidden(dep) || seen[dep] {
+			continue
 		}
+		seen[dep] = true
+		deps = append(deps, dep)
 	}
 	sort.Strings(deps)
 	return deps

@@ -17,7 +17,7 @@ import (
 )
 
 // defaultConfigPath is used when no positional argument is given.
-const defaultConfigPath = "config.yaml"
+const defaultConfigPath = "config.serde.yaml"
 
 // keyColumnWidth aligns "key = value" output; longest key is filter_substring (16).
 const keyColumnWidth = 16
