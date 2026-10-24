@@ -5,7 +5,7 @@ CONFIG     ?= config.yaml
 
 GO         ?= go
 GOFLAGS    ?=
-LINT       ?= golangci-lint
+GOLANGCI_LINT ?= golangci-lint
 FMT        ?= gofmt
 
 .PHONY: all build test lint fmt fmt-check vet check run clean
@@ -20,7 +20,7 @@ test:
 	$(GO) test $(GOFLAGS) ./...
 
 lint:
-	$(LINT) run
+	$(GOLANGCI_LINT) run
 
 fmt:
 	$(FMT) -w .
