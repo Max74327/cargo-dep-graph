@@ -41,6 +41,8 @@
           version = "0.2.0";
           src = ./.;
 
+          vendorHash = null;
+
           subPackages = [ "cmd/cargo-dep-graph" ];
 
           meta = with pkgs.lib; {
