@@ -215,6 +215,7 @@ func TestAsMapOrder(t *testing.T) {
 		ASCIITree:       true,
 		FilterSubstring: "",
 		MaxDepth:        2,
+		Reverse:         false,
 	}
 	got := cfg.AsMap()
 	want := [][2]string{
@@ -225,6 +226,7 @@ func TestAsMapOrder(t *testing.T) {
 		{"ascii_tree", "true"},
 		{"filter_substring", ""},
 		{"max_depth", "2"},
+		{"reverse", "false"},
 	}
 	if len(got) != len(want) {
 		t.Fatalf("len = %d, want %d", len(got), len(want))

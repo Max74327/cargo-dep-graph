@@ -31,6 +31,7 @@ type Config struct {
 	ASCIITree       bool
 	FilterSubstring string
 	MaxDepth        int
+	Reverse         bool
 }
 
 // Load reads a YAML file and validates its parameters.
@@ -53,6 +54,7 @@ func Load(path string) (*Config, error) {
 		ASCIITree:       raw.Bool("ascii_tree"),
 		FilterSubstring: raw.String("filter_substring"),
 		MaxDepth:        raw.Int("max_depth", 0),
+		Reverse:         raw.Bool("reverse"),
 	}
 
 	if err := cfg.validate(); err != nil {
@@ -101,5 +103,6 @@ func (c *Config) AsMap() [][2]string {
 		{"ascii_tree", fmt.Sprintf("%t", c.ASCIITree)},
 		{"filter_substring", c.FilterSubstring},
 		{"max_depth", fmt.Sprintf("%d", c.MaxDepth)},
+		{"reverse", fmt.Sprintf("%t", c.Reverse)},
 	}
 }

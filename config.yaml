@@ -5,3 +5,4 @@ test_repo_path: ""
 ascii_tree: false
 filter_substring: ""
 max_depth: 0
+reverse: false

@@ -98,3 +98,32 @@ func (g *Graph) Len() int {
 	}
 	return count
 }
+
+// Reverse returns a new graph with all edges reversed.
+// Hidden flags are preserved.
+func (g *Graph) Reverse() *Graph {
+	rev := New()
+	for name, n := range g.nodes {
+		rev.AddNode(name)
+		if n.hidden {
+			rev.MarkHidden(name)
+		}
+		for _, dep := range n.Dependencies {
+			rev.AddEdge(dep, name)
+		}
+	}
+	return rev
+}
+
+// FromMap builds a complete graph from a dependency map.
+// Every key and every value becomes a node; every pair becomes an edge.
+func FromMap(deps map[string][]string) *Graph {
+	g := New()
+	for from, tos := range deps {
+		g.AddNode(from)
+		for _, to := range tos {
+			g.AddEdge(from, to)
+		}
+	}
+	return g
+}
