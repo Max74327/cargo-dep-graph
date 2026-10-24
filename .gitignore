@@ -3,6 +3,19 @@
 *.out
 .idea/
 .vscode/
+*.swp
+*.swo
+
+coverage.txt
+coverage.html
+
+result
+result-*
 
 .envrc
 .direnv/
+
+.DS_Store
+Thumbs.db
+
+config.local.yaml
