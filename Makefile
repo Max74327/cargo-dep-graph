@@ -1,15 +1,16 @@
-BIN_DIR   := bin
-BIN       := $(BIN_DIR)/cargo-dep-graph
-PKG       := ./cmd/cargo-dep-graph
-CONFIG    ?= config.yaml
-GO        ?= go
-GOFLAGS   ?=
-LINT      ?= golangci-lint
-FMT       ?= gofmt
+BIN_DIR    := bin
+BIN        := $(BIN_DIR)/cargo-dep-graph
+PKG        := ./cmd/cargo-dep-graph
+CONFIG     ?= config.yaml
 
-.PHONY: all build test lint fmt fmt-check vet run clean nix-build nix-shell
+GO         ?= go
+GOFLAGS    ?=
+LINT       ?= golangci-lint
+FMT        ?= gofmt
 
-all: build
+.PHONY: all build test lint fmt fmt-check vet check run clean
+
+all: build test run
 
 build:
 	@mkdir -p $(BIN_DIR)
@@ -27,7 +28,7 @@ fmt:
 fmt-check:
 	@out="$$($(FMT) -l .)"; \
 	if [ -n "$$out" ]; then \
-		echo "Не отформатировано:"; \
+		echo "Not formatted:"; \
 		echo "$$out"; \
 		exit 1; \
 	fi
@@ -35,15 +36,10 @@ fmt-check:
 vet:
 	$(GO) vet $(GOFLAGS) ./...
 
+check: fmt-check vet lint test
+
 run: build
 	./$(BIN) $(CONFIG)
 
 clean:
 	rm -rf $(BIN_DIR)
-
-## Собрать через Nix (если nix доступен).
-nix-build:
-	nix build
-
-nix-shell:
-	nix develop
