@@ -1,7 +1,7 @@
 package toml_test
 
 import (
-	"strings"
+	"errors"
 	"testing"
 
 	"cargo-dep-graph/internal/toml"
@@ -188,8 +188,8 @@ func TestParseUnterminatedSection(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected error for unterminated section")
 	}
-	if !strings.Contains(err.Error(), "unterminated section") {
-		t.Errorf("err = %v, want it to mention unterminated section", err)
+	if _, ok := errors.AsType[*toml.ParseError](err); !ok {
+		t.Fatalf("err = %v, want *toml.ParseError", err)
 	}
 }
 
@@ -244,5 +244,29 @@ name = "demo"
 	}
 	if got := root["top"].Str; got != "value" {
 		t.Errorf("top = %q, want %q", got, "value")
+	}
+}
+func TestParseMultilineArray(t *testing.T) {
+	doc, err := toml.Parse(`
+[workspace]
+members = [
+    "serde",
+    "serde_core",
+]
+resolver = "2"
+`)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	tbl, _ := doc.GetTable("workspace")
+	members := tbl["members"]
+	if !members.IsArr || len(members.Arr) != 2 {
+		t.Fatalf("members = %v, want 2 elements", members)
+	}
+	if members.Arr[0].Str != "serde" || members.Arr[1].Str != "serde_core" {
+		t.Errorf("members = %v", members.Arr)
+	}
+	if got := tbl["resolver"].Str; got != "2" {
+		t.Errorf("resolver = %q, want %q", got, "2")
 	}
 }

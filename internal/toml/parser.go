@@ -38,45 +38,103 @@ type Value struct {
 	IsTbl bool
 }
 
-// Parse parses a TOML document. Only sections and key = value pairs are supported.
+// Parse parses a TOML document. Sections, key = value pairs,
+// multiline arrays and multiline inline tables are supported.
 func Parse(input string) (*Document, error) {
 	doc := &Document{tables: map[string]map[string]Value{}}
 	current := map[string]Value{}
 	doc.tables[""] = current
 
-	for i, raw := range strings.Split(input, "\n") {
+	lines := strings.Split(input, "\n")
+	var buf strings.Builder
+	startLine := 0
+	depth := 0
+
+	for i, raw := range lines {
 		line := strings.TrimSpace(stripComment(raw))
-		if line == "" {
+		if line == "" && depth == 0 {
 			continue
 		}
 
-		if strings.HasPrefix(line, "[") {
-			if !strings.HasSuffix(line, "]") {
-				return nil, &ParseError{Line: i + 1, Msg: "unterminated section header"}
-			}
-			name := strings.TrimSpace(line[1 : len(line)-1])
-			if _, ok := doc.tables[name]; !ok {
-				doc.tables[name] = map[string]Value{}
-			}
-			current = doc.tables[name]
+		if buf.Len() == 0 {
+			startLine = i + 1
+		} else {
+			buf.WriteByte(' ')
+		}
+		buf.WriteString(line)
+		depth += countBrackets(line)
+
+		if depth > 0 {
 			continue
 		}
 
-		key, valText, ok := strings.Cut(line, "=")
-		if !ok {
-			return nil, &ParseError{Line: i + 1, Msg: "expected key = value"}
+		combined := buf.String()
+		buf.Reset()
+
+		if err := parseLine(doc, &current, combined); err != nil {
+			if pe, ok := err.(*ParseError); ok && pe.Line == 0 {
+				pe.Line = startLine
+			}
+			return nil, err
 		}
-		key = strings.TrimSpace(key)
-		if key == "" {
-			return nil, &ParseError{Line: i + 1, Msg: "empty key"}
-		}
-		val, err := parseValue(strings.TrimSpace(valText))
-		if err != nil {
-			return nil, &ParseError{Line: i + 1, Msg: err.Error()}
-		}
-		current[key] = val
+	}
+
+	if depth != 0 || buf.Len() > 0 {
+		return nil, &ParseError{Line: startLine, Msg: "unclosed bracket or brace"}
 	}
 	return doc, nil
+}
+
+// countBrackets returns the net number of unclosed [ and { in s.
+func countBrackets(s string) int {
+	depth := 0
+	inSingle, inDouble := false, false
+	for i := 0; i < len(s); i++ {
+		c := s[i]
+		switch {
+		case c == '\'' && !inDouble:
+			inSingle = !inSingle
+		case c == '"' && !inSingle:
+			inDouble = !inDouble
+		case inSingle || inDouble:
+			// skip
+		case c == '[' || c == '{':
+			depth++
+		case c == ']' || c == '}':
+			depth--
+		}
+	}
+	return depth
+}
+
+// parseLine parses one logical line: either a section header or key = value.
+func parseLine(doc *Document, current *map[string]Value, line string) error {
+	if strings.HasPrefix(line, "[") {
+		if !strings.HasSuffix(line, "]") {
+			return &ParseError{Msg: "unterminated section header"}
+		}
+		name := strings.TrimSpace(line[1 : len(line)-1])
+		if _, ok := doc.tables[name]; !ok {
+			doc.tables[name] = map[string]Value{}
+		}
+		*current = doc.tables[name]
+		return nil
+	}
+
+	key, valText, ok := strings.Cut(line, "=")
+	if !ok {
+		return &ParseError{Msg: "expected key = value"}
+	}
+	key = strings.TrimSpace(key)
+	if key == "" {
+		return &ParseError{Msg: "empty key"}
+	}
+	val, err := parseValue(strings.TrimSpace(valText))
+	if err != nil {
+		return &ParseError{Msg: err.Error()}
+	}
+	(*current)[key] = val
+	return nil
 }
 
 // stripComment removes a '#' comment that is not inside quotes.
@@ -145,7 +203,11 @@ func parseArray(s string) (Value, error) {
 	parts := splitTopLevel(body, ',')
 	arr := make([]Value, 0, len(parts))
 	for _, p := range parts {
-		v, err := parseValue(strings.TrimSpace(p))
+		p = strings.TrimSpace(p)
+		if p == "" {
+			continue
+		}
+		v, err := parseValue(p)
 		if err != nil {
 			return Value{}, err
 		}

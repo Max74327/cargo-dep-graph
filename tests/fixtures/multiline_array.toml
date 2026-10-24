@@ -1,0 +1,10 @@
+[workspace]
+members = [
+    "serde",
+    "serde_core",
+    "serde_derive",
+]
+resolver = "2"
+
+[dependencies]
+serde_derive = { version = "1", optional = true }
