@@ -10,6 +10,7 @@ import (
 	"cargo-dep-graph/internal/config"
 	"cargo-dep-graph/internal/fetch"
 	"cargo-dep-graph/internal/graph"
+	"cargo-dep-graph/internal/render"
 	"cargo-dep-graph/internal/toml"
 )
 
@@ -46,7 +47,12 @@ func run(args []string) error {
 		return err
 	}
 
-	printGraph(cfg.PackageName, g, cfg.Reverse)
+	if cfg.ASCIITree {
+		fmt.Print(render.ASCIITree(g, cfg.PackageName))
+	} else {
+		fmt.Println(render.Mermaid(g, cfg.PackageName))
+	}
+
 	return nil
 }
 
@@ -112,39 +118,4 @@ func printConfig(cfg *config.Config) {
 	for _, kv := range cfg.AsMap() {
 		fmt.Printf("%-*s = %s\n", keyColumnWidth, kv[0], kv[1])
 	}
-}
-
-// printGraph writes the dependency graph in a simple textual form.
-func printGraph(pkg string, g *graph.Graph, reverse bool) {
-	title := "Dependency graph"
-	if reverse {
-		title = "Reverse dependency graph"
-	}
-	fmt.Printf("\n=== %s of %s ===\n", title, pkg)
-
-	if g.Len() == 0 {
-		fmt.Println("(none)")
-		return
-	}
-
-	// Print root first if visible.
-	if g.HasNode(pkg) && !g.IsHidden(pkg) {
-		printNode(pkg, g)
-	}
-	for _, name := range g.Nodes() {
-		if name == pkg {
-			continue
-		}
-		printNode(name, g)
-	}
-}
-
-// printNode writes a single node and its direct dependencies.
-func printNode(name string, g *graph.Graph) {
-	deps := g.Node(name).Dependencies
-	if len(deps) == 0 {
-		fmt.Printf("- %s\n", name)
-		return
-	}
-	fmt.Printf("- %s -> %v\n", name, deps)
 }
