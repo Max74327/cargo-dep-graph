@@ -1,5 +1,5 @@
-package_name: serde
-repository_url: https://github.com/serde-rs/serde
+package_name: serde_json
+repository_url: https://github.com/serde-rs/json
 test_mode: false
 test_repo_path: ""
 ascii_tree: false
