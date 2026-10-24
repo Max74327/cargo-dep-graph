@@ -214,6 +214,7 @@ func TestAsMapOrder(t *testing.T) {
 		TestRepoPath:    "",
 		ASCIITree:       true,
 		FilterSubstring: "",
+		MaxDepth:        2,
 	}
 	got := cfg.AsMap()
 	want := [][2]string{
@@ -223,6 +224,7 @@ func TestAsMapOrder(t *testing.T) {
 		{"test_repo_path", ""},
 		{"ascii_tree", "true"},
 		{"filter_substring", ""},
+		{"max_depth", "2"},
 	}
 	if len(got) != len(want) {
 		t.Fatalf("len = %d, want %d", len(got), len(want))
@@ -231,5 +233,67 @@ func TestAsMapOrder(t *testing.T) {
 		if got[i] != want[i] {
 			t.Errorf("AsMap()[%d] = %v, want %v", i, got[i], want[i])
 		}
+	}
+}
+
+// --- MaxDepth ---
+
+func TestLoadMaxDepth(t *testing.T) {
+	path := writeTemp(t, "package_name: a\nrepository_url: x\nmax_depth: 3\n")
+	cfg, err := config.Load(path)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if cfg.MaxDepth != 3 {
+		t.Errorf("MaxDepth = %d, want 3", cfg.MaxDepth)
+	}
+}
+
+func TestLoadMaxDepthAbsent(t *testing.T) {
+	path := writeTemp(t, "package_name: a\nrepository_url: x\n")
+	cfg, err := config.Load(path)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if cfg.MaxDepth != 0 {
+		t.Errorf("MaxDepth = %d, want 0 (default)", cfg.MaxDepth)
+	}
+}
+
+func TestLoadInvalidMaxDepth(t *testing.T) {
+	path := writeTemp(t, "package_name: a\nrepository_url: x\nmax_depth: -1\n")
+	_, err := config.Load(path)
+	if !errors.Is(err, config.ErrInvalidMaxDepth) {
+		t.Fatalf("err = %v, want ErrInvalidMaxDepth", err)
+	}
+}
+
+func TestLoadNonNumericMaxDepth(t *testing.T) {
+	// Нечисловое значение должно молча замениться на дефолт (0), а не падать.
+	path := writeTemp(t, "package_name: a\nrepository_url: x\nmax_depth: abc\n")
+	cfg, err := config.Load(path)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if cfg.MaxDepth != 0 {
+		t.Errorf("MaxDepth = %d, want 0 (default for invalid)", cfg.MaxDepth)
+	}
+}
+
+// --- Node.Int ---
+
+func TestNodeInt(t *testing.T) {
+	n, err := config.ParseYAML("a: 42\nb: notanumber\nc: \"\"\n")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if got := n.Int("a", -1); got != 42 {
+		t.Errorf("a = %d, want 42", got)
+	}
+	if got := n.Int("b", -1); got != -1 {
+		t.Errorf("b = %d, want -1 (def)", got)
+	}
+	if got := n.Int("missing", -1); got != -1 {
+		t.Errorf("missing = %d, want -1 (def)", got)
 	}
 }

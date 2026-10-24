@@ -37,6 +37,22 @@ func (n *Node) Bool(key string) bool {
 	return v == "true"
 }
 
+// Int returns the value for key as an int, or def if absent or invalid.
+func (n *Node) Int(key string, def int) int {
+	if n == nil {
+		return def
+	}
+	raw, ok := n.values[key]
+	if !ok {
+		return def
+	}
+	v, err := strconv.Atoi(strings.TrimSpace(raw))
+	if err != nil {
+		return def
+	}
+	return v
+}
+
 // ParseYAML parses a flat YAML document into a Node.
 // Only top-level "key: value" lines and comments are supported.
 func ParseYAML(input string) (*Node, error) {

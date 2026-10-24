@@ -1,3 +1,4 @@
+// Package config loads and validates the tool's YAML configuration.
 package config
 
 import (
@@ -7,8 +8,10 @@ import (
 	"strings"
 )
 
+// MaxConfigSize is the upper bound for the configuration file size.
 const MaxConfigSize = 64 * 1024
 
+// Configuration errors.
 var (
 	ErrFileNotFound    = errors.New("configuration file not found")
 	ErrFileTooBig      = errors.New("configuration file too big")
@@ -16,8 +19,10 @@ var (
 	ErrEmptyPackage    = errors.New("package_name must not be empty")
 	ErrEmptyRepo       = errors.New("repository_url must not be empty")
 	ErrMissingTestPath = errors.New("test_repo_path is required when test_mode=true")
+	ErrInvalidMaxDepth = errors.New("max_depth must be non-negative")
 )
 
+// Config holds user-configurable parameters.
 type Config struct {
 	PackageName     string
 	RepositoryURL   string
@@ -25,9 +30,10 @@ type Config struct {
 	TestRepoPath    string
 	ASCIITree       bool
 	FilterSubstring string
+	MaxDepth        int
 }
 
-// Load читает YAML-файл и валидирует параметры.
+// Load reads a YAML file and validates its parameters.
 func Load(path string) (*Config, error) {
 	data, err := readLimited(path)
 	if err != nil {
@@ -46,6 +52,7 @@ func Load(path string) (*Config, error) {
 		TestRepoPath:    raw.String("test_repo_path"),
 		ASCIITree:       raw.Bool("ascii_tree"),
 		FilterSubstring: raw.String("filter_substring"),
+		MaxDepth:        raw.Int("max_depth", 0),
 	}
 
 	if err := cfg.validate(); err != nil {
@@ -78,10 +85,13 @@ func (c *Config) validate() error {
 	if c.TestMode && strings.TrimSpace(c.TestRepoPath) == "" {
 		return ErrMissingTestPath
 	}
+	if c.MaxDepth < 0 {
+		return ErrInvalidMaxDepth
+	}
 	return nil
 }
 
-// AsMap возвращает параметры в порядке для вывода «ключ = значение».
+// AsMap returns the parameters in a fixed order for key-value output.
 func (c *Config) AsMap() [][2]string {
 	return [][2]string{
 		{"package_name", c.PackageName},
@@ -90,5 +100,6 @@ func (c *Config) AsMap() [][2]string {
 		{"test_repo_path", c.TestRepoPath},
 		{"ascii_tree", fmt.Sprintf("%t", c.ASCIITree)},
 		{"filter_substring", c.FilterSubstring},
+		{"max_depth", fmt.Sprintf("%d", c.MaxDepth)},
 	}
 }
