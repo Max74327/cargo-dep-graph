@@ -216,6 +216,7 @@ func TestAsMapOrder(t *testing.T) {
 		FilterSubstring: "",
 		MaxDepth:        2,
 		Reverse:         false,
+		Recursive:       true,
 	}
 	got := cfg.AsMap()
 	want := [][2]string{
@@ -227,6 +228,7 @@ func TestAsMapOrder(t *testing.T) {
 		{"filter_substring", ""},
 		{"max_depth", "2"},
 		{"reverse", "false"},
+		{"recursive", "true"},
 	}
 	if len(got) != len(want) {
 		t.Fatalf("len = %d, want %d", len(got), len(want))

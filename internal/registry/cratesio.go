@@ -13,13 +13,14 @@ import (
 const UserAgent = "cargo-dep-graph/0.2"
 
 // MaxResponseSize is the upper bound for an API response (1 MiB).
-const MaxResponseSize = 1 << 20
+const MaxResponseSize = 10 << 20
 
 // Client is a crates.io API client with an in-memory cache.
 type Client struct {
-	httpClient *http.Client
-	baseURL    string
-	cache      map[string][]string
+	httpClient  *http.Client
+	baseURL     string
+	cache       map[string][]string
+	lastRequest time.Time
 }
 
 // NewClient creates a new crates.io client.
@@ -42,6 +43,12 @@ func NewClientWithBaseURL(baseURL string) *Client {
 // FetchDependencies returns the names of normal runtime dependencies of name.
 // The result is cached in memory for the lifetime of the client.
 func (c *Client) FetchDependencies(name string) ([]string, error) {
+
+	if since := time.Since(c.lastRequest); since < 100*time.Millisecond {
+		time.Sleep(100*time.Millisecond - since)
+	}
+	c.lastRequest = time.Now()
+
 	if deps, ok := c.cache[name]; ok {
 		return deps, nil
 	}

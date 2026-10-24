@@ -2,7 +2,8 @@ package_name: serde_json
 repository_url: https://github.com/serde-rs/json
 test_mode: false
 test_repo_path: ""
-ascii_tree: false
-filter_substring: ""
-max_depth: 0
+ascii_tree: true
+filter_substring: "web-sys"
+max_depth: 3
 reverse: false
+recursive: true

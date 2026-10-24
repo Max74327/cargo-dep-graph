@@ -5,11 +5,13 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"time"
 
 	"cargo-dep-graph/internal/cargo"
 	"cargo-dep-graph/internal/config"
 	"cargo-dep-graph/internal/fetch"
 	"cargo-dep-graph/internal/graph"
+	"cargo-dep-graph/internal/registry"
 	"cargo-dep-graph/internal/render"
 	"cargo-dep-graph/internal/toml"
 )
@@ -42,17 +44,21 @@ func run(args []string) error {
 
 	printConfig(cfg)
 
+	start := time.Now()
 	g, err := buildGraph(cfg)
+	elapsed := time.Since(start)
 	if err != nil {
 		return err
 	}
+
+	// Заголовок с информацией о режиме и времени.
+	printHeader(cfg, elapsed)
 
 	if cfg.ASCIITree {
 		fmt.Print(render.ASCIITree(g, cfg.PackageName))
 	} else {
 		fmt.Println(render.Mermaid(g, cfg.PackageName))
 	}
-
 	return nil
 }
 
@@ -61,6 +67,15 @@ func buildGraph(cfg *config.Config) (*graph.Graph, error) {
 	opts := graph.BuildOptions{
 		MaxDepth:        cfg.MaxDepth,
 		FilterSubstring: cfg.FilterSubstring,
+	}
+
+	// Recursive mode (via crates.io) takes priority.
+	if cfg.Recursive {
+		if cfg.TestMode {
+			return nil, fmt.Errorf("recursive mode is not supported in test mode")
+		}
+		client := registry.NewClient()
+		return graph.Resolve(cfg.PackageName, opts, client)
 	}
 
 	if cfg.TestMode {
@@ -118,4 +133,26 @@ func printConfig(cfg *config.Config) {
 	for _, kv := range cfg.AsMap() {
 		fmt.Printf("%-*s = %s\n", keyColumnWidth, kv[0], kv[1])
 	}
+}
+
+// printHeader writes a short summary of the mode and timing.
+func printHeader(cfg *config.Config, elapsed time.Duration) {
+	mode := "direct (Cargo.toml)"
+	switch {
+	case cfg.TestMode:
+		mode = "test repo"
+	case cfg.Recursive:
+		mode = "recursive (crates.io)"
+	}
+
+	reverse := ""
+	if cfg.Reverse {
+		reverse = " [reverse]"
+	}
+
+	fmt.Printf("\n=== Result (%s%s) ===\n", mode, reverse)
+	if cfg.Recursive {
+		fmt.Printf("Resolution time: %s\n", elapsed.Round(time.Millisecond))
+	}
+	fmt.Println()
 }

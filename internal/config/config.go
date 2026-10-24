@@ -32,6 +32,7 @@ type Config struct {
 	FilterSubstring string
 	MaxDepth        int
 	Reverse         bool
+	Recursive       bool
 }
 
 // Load reads a YAML file and validates its parameters.
@@ -55,6 +56,7 @@ func Load(path string) (*Config, error) {
 		FilterSubstring: raw.String("filter_substring"),
 		MaxDepth:        raw.Int("max_depth", 0),
 		Reverse:         raw.Bool("reverse"),
+		Recursive:       raw.Bool("recursive"),
 	}
 
 	if err := cfg.validate(); err != nil {
@@ -104,5 +106,6 @@ func (c *Config) AsMap() [][2]string {
 		{"filter_substring", c.FilterSubstring},
 		{"max_depth", fmt.Sprintf("%d", c.MaxDepth)},
 		{"reverse", fmt.Sprintf("%t", c.Reverse)},
+		{"recursive", fmt.Sprintf("%t", c.Recursive)},
 	}
 }
