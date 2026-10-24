@@ -101,7 +101,7 @@ func buildFromTestRepo(cfg *config.Config, opts graph.BuildOptions) (*graph.Grap
 
 // buildFromCargo builds a graph from the direct dependencies of Cargo.toml.
 func buildFromCargo(cfg *config.Config, opts graph.BuildOptions) (*graph.Graph, error) {
-	tomlText, err := fetch.FetchCargoToml(cfg.RepositoryURL)
+	tomlText, err := fetch.CargoToml(cfg.RepositoryURL)
 	if err != nil {
 		return nil, fmt.Errorf("fetch manifest (%s): %w", cfg.RepositoryURL, err)
 	}

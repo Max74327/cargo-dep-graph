@@ -24,8 +24,8 @@ var (
 // httpClient is used for all HTTP requests; the timeout prevents hanging.
 var httpClient = &http.Client{Timeout: 15 * time.Second}
 
-// FetchCargoToml returns the text of Cargo.toml from a URL or local path.
-func FetchCargoToml(source string) (string, error) {
+// CargoToml returns the text of Cargo.toml from a URL or local path.
+func CargoToml(source string) (string, error) {
 	switch {
 	case strings.HasPrefix(source, "http://"), strings.HasPrefix(source, "https://"):
 		return fetchHTTP(source)

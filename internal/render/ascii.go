@@ -2,7 +2,6 @@
 package render
 
 import (
-	"fmt"
 	"sort"
 	"strings"
 
@@ -73,35 +72,4 @@ func renderChild(sb *strings.Builder, g *graph.Graph, name, prefix string, last 
 		isLast := i == len(children)-1
 		renderChild(sb, g, child, childPrefix, isLast, path)
 	}
-}
-
-// Example output:
-//
-// A
-// ├── B
-// │   └── D
-// └── C
-//
-//	└── D
-//
-// If the graph has a cycle A -> B -> A:
-//
-// A
-// └── B
-//
-//	└── A (cycle)
-func ExampleASCIITree() {
-	g := graph.New()
-	g.AddEdge("A", "B")
-	g.AddEdge("A", "C")
-	g.AddEdge("B", "D")
-	g.AddEdge("C", "D")
-
-	fmt.Print(ASCIITree(g, "A"))
-	// Output:
-	// A
-	// ├── B
-	// │   └── D
-	// └── C
-	//     └── D
 }

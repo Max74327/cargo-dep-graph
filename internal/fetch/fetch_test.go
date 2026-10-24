@@ -56,11 +56,11 @@ func TestNormalizeGithubURLNonGithub(t *testing.T) {
 	}
 }
 
-// --- FetchCargoToml: local files ---
+// --- CargoToml: local files ---
 
-func TestFetchCargoTomlFromPlainPath(t *testing.T) {
+func TestCargoTomlFromPlainPath(t *testing.T) {
 	path := writeTemp(t, "[dependencies]\nserde = \"1.0\"\n")
-	got, err := fetch.FetchCargoToml(path)
+	got, err := fetch.CargoToml(path)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -69,9 +69,9 @@ func TestFetchCargoTomlFromPlainPath(t *testing.T) {
 	}
 }
 
-func TestFetchCargoTomlFromFileURL(t *testing.T) {
+func TestCargoTomlFromFileURL(t *testing.T) {
 	path := writeTemp(t, "[package]\nname = \"demo\"\n")
-	got, err := fetch.FetchCargoToml("file://" + path)
+	got, err := fetch.CargoToml("file://" + path)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -80,14 +80,14 @@ func TestFetchCargoTomlFromFileURL(t *testing.T) {
 	}
 }
 
-func TestFetchCargoTomlMissingFile(t *testing.T) {
-	_, err := fetch.FetchCargoToml("no-such-file.toml")
+func TestCargoTomlMissingFile(t *testing.T) {
+	_, err := fetch.CargoToml("no-such-file.toml")
 	if !errors.Is(err, fetch.ErrFileNotFound) {
 		t.Fatalf("err = %v, want ErrFileNotFound", err)
 	}
 }
 
-func TestFetchCargoTomlFileTooBig(t *testing.T) {
+func TestCargoTomlFileTooBig(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "big.toml")
 	big := make([]byte, fetch.MaxTOMLSize+1)
@@ -97,21 +97,21 @@ func TestFetchCargoTomlFileTooBig(t *testing.T) {
 	if err := os.WriteFile(path, big, 0o600); err != nil {
 		t.Fatalf("write big file: %v", err)
 	}
-	_, err := fetch.FetchCargoToml(path)
+	_, err := fetch.CargoToml(path)
 	if !errors.Is(err, fetch.ErrFileTooBig) {
 		t.Fatalf("err = %v, want ErrFileTooBig", err)
 	}
 }
 
-// --- FetchCargoToml: HTTP via httptest ---
+// --- CargoToml: HTTP via httptest ---
 
-func TestFetchCargoTomlHTTP(t *testing.T) {
+func TestCargoTomlHTTP(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		_, _ = w.Write([]byte("[dependencies]\ntokio = \"1\"\n"))
 	}))
 	defer srv.Close()
 
-	got, err := fetch.FetchCargoToml(srv.URL)
+	got, err := fetch.CargoToml(srv.URL)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -120,26 +120,26 @@ func TestFetchCargoTomlHTTP(t *testing.T) {
 	}
 }
 
-func TestFetchCargoTomlHTTPStatusError(t *testing.T) {
+func TestCargoTomlHTTPStatusError(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusNotFound)
 	}))
 	defer srv.Close()
 
-	_, err := fetch.FetchCargoToml(srv.URL)
+	_, err := fetch.CargoToml(srv.URL)
 	if !errors.Is(err, fetch.ErrHTTPStatus) {
 		t.Fatalf("err = %v, want ErrHTTPStatus", err)
 	}
 }
 
-func TestFetchCargoTomlHTTPTooBig(t *testing.T) {
+func TestCargoTomlHTTPTooBig(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		big := make([]byte, fetch.MaxTOMLSize+1)
 		_, _ = w.Write(big)
 	}))
 	defer srv.Close()
 
-	_, err := fetch.FetchCargoToml(srv.URL)
+	_, err := fetch.CargoToml(srv.URL)
 	if !errors.Is(err, fetch.ErrFileTooBig) {
 		t.Fatalf("err = %v, want ErrFileTooBig", err)
 	}
