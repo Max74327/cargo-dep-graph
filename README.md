@@ -5,7 +5,9 @@ CLI tool for visualizing Cargo dependency graphs.
 The tool does **not** use package managers or third-party libraries to obtain
 dependency information. `Cargo.toml` is fetched and parsed by the tool itself.
 
-**Stage 4 — reverse dependencies.** Implemented:
+## Status
+
+**Stage 5 — visualization.** Implemented:
 
 - **Stage 1:** Loading and validation of a YAML configuration file, printing
   all user-configurable parameters as `key = value`, error handling.
@@ -19,6 +21,8 @@ dependency information. `Cargo.toml` is fetched and parsed by the tool itself.
 - **Stage 4:** Printing reverse dependencies (packages that depend on the
   given package) by reversing the graph and reusing the same iterative DFS.
   Available in test mode via the `reverse` flag.
+- **Stage 5:** Rendering the graph as a Mermaid flowchart or as an ASCII tree
+  (controlled by the `ascii_tree` flag).
 
 ## Requirements
 
@@ -69,16 +73,16 @@ make lint
 
 All parameters are read from a YAML file (`config.yaml` by default).
 
-| Parameter          | Type   | Description                                                |
-| ------------------ | ------ | ---------------------------------------------------------- |
-| `package_name`     | string | Name of the Cargo package to analyze                       |
-| `repository_url`   | string | Repository URL (used when `test_mode` is `false`)          |
-| `test_mode`        | bool   | Read from `test_repo_path` instead of `repository_url`     |
-| `test_repo_path`   | string | Path to a local test repository file                       |
-| `ascii_tree`       | bool   | Render dependencies as an ASCII tree (stage 5)             |
-| `filter_substring` | string | Skip packages whose name contains this substring (stage 3) |
-| `max_depth`        | int    | Maximum analysis depth; 0 means "no limit"                 |
-| `reverse`          | bool   | Print reverse dependencies; requires `test_mode: true`     |
+| Parameter          | Type   | Description                                             |
+| ------------------ | ------ | ------------------------------------------------------- |
+| `package_name`     | string | Name of the Cargo package to analyze                    |
+| `repository_url`   | string | Repository URL (used when `test_mode` is `false`)       |
+| `test_mode`        | bool   | Read from `test_repo_path` instead of `repository_url`  |
+| `test_repo_path`   | string | Path to a local test repository file                    |
+| `ascii_tree`       | bool   | Render dependencies as an ASCII tree instead of Mermaid |
+| `filter_substring` | string | Skip packages whose name contains this substring        |
+| `max_depth`        | int    | Maximum analysis depth; 0 means "no limit"              |
+| `reverse`          | bool   | Print reverse dependencies; requires `test_mode: true`  |
 
 Example:
 
@@ -103,10 +107,12 @@ reverse: false
   `test_repo_path`. Each line is `A B` (package A depends on package B).
   Empty lines and lines starting with `#` are ignored. Colons are treated as
   separators (`A: B` and `A:B` parse as `A B`), and package names are
-  normalized to uppercase. When `reverse: true`, the tool prints packages that depend on `package_name`
-  instead of its dependencies. Reverse dependencies are computed by building
-  the full forward graph from the test repository, reversing all edges, and
-  running the same iterative DFS from `package_name`.
+  normalized to uppercase.
+
+When `reverse: true`, the tool prints packages that depend on `package_name`
+instead of its dependencies. Reverse dependencies are computed by building
+the full forward graph from the test repository, reversing all edges, and
+running the same iterative DFS from `package_name`.
 
 Example test graph:
 
@@ -120,6 +126,41 @@ D F
 E F
 ```
 
+### Visualization
+
+By default, the graph is rendered as a **Mermaid flowchart**:
+
+```mermaid
+flowchart TD
+    A
+    A --> B
+    A --> C
+    B --> D
+    C --> D
+    C --> E
+    D --> F
+    E --> F
+    F
+```
+
+Set `ascii_tree: true` to render the graph as an **ASCII tree** instead:
+
+```
+A
+├── B
+│   └── D
+│       └── F
+└── C
+    ├── D
+    │   └── F
+    └── E
+        └── F
+```
+
+If the graph contains cycles, the ASCII tree marks the repeated node with
+`(cycle)` instead of expanding it indefinitely. Mermaid renders cycles as
+bidirectional or repeated edges.
+
 ## Error handling
 
 Every configuration parameter and every stage of the pipeline is validated.
@@ -131,10 +172,11 @@ error: load config (config.yaml): package_name must not be empty
 error: fetch manifest (https://github.com/user/repo): unexpected HTTP status: 404 for ...
 error: parse manifest: toml: line 3: expected key = value
 error: load test repo (graph.txt): test repo: line 5: expected 'A B', got "A B C"
-error: reverse dependencies require test mode
 ```
 
-If a Cargo.toml has no [dependencies] section (for example, a workspace manifest or a leaf package), the graph contains only the root node instead of failing.
+If a `Cargo.toml` has no `[dependencies]` section (for example, a workspace
+manifest or a leaf package), the graph contains only the root node instead of
+failing.
 
 ## Project layout
 
@@ -143,9 +185,11 @@ cmd/cargo-dep-graph/   CLI entry point
 internal/cargo/        [dependencies] extraction
 internal/config/       YAML loader, minimal parser, validation
 internal/fetch/        Cargo.toml fetcher (HTTP + local files)
-internal/graph/        Graph structure, iterative DFS, test repo loader, reverse dependencies
+internal/graph/        Graph structure, iterative DFS, test repo loader,
+                       reverse dependencies
+internal/render/       Mermaid and ASCII tree renderers
 internal/toml/         Minimal TOML parser
-tests/fixtures/        Cargo.toml fixtures
+tests/fixtures/        Cargo.toml and test graph fixtures
 ```
 
 ## License
