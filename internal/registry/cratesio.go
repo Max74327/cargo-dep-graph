@@ -18,6 +18,7 @@ const MaxResponseSize = 1 << 20
 // Client is a crates.io API client with an in-memory cache.
 type Client struct {
 	httpClient *http.Client
+	baseURL    string
 	cache      map[string][]string
 }
 
@@ -25,8 +26,17 @@ type Client struct {
 func NewClient() *Client {
 	return &Client{
 		httpClient: &http.Client{Timeout: 15 * time.Second},
+		baseURL:    "https://crates.io",
 		cache:      make(map[string][]string),
 	}
+}
+
+// NewClientWithBaseURL creates a client pointing at a custom base URL.
+// Intended for tests.
+func NewClientWithBaseURL(baseURL string) *Client {
+	c := NewClient()
+	c.baseURL = baseURL
+	return c
 }
 
 // FetchDependencies returns the names of normal runtime dependencies of name.
@@ -52,7 +62,7 @@ func (c *Client) FetchDependencies(name string) ([]string, error) {
 
 // latestVersion returns the latest version of the crate.
 func (c *Client) latestVersion(name string) (string, error) {
-	url := fmt.Sprintf("https://crates.io/api/v1/crates/%s", name)
+	url := fmt.Sprintf("%s/api/v1/crates/%s", c.baseURL, name)
 	var resp CrateResponse
 	if err := c.getJSON(url, &resp); err != nil {
 		return "", err
@@ -65,7 +75,7 @@ func (c *Client) latestVersion(name string) (string, error) {
 
 // dependencies returns normal (runtime) dependencies of name@version.
 func (c *Client) dependencies(name, version string) ([]string, error) {
-	url := fmt.Sprintf("https://crates.io/api/v1/crates/%s/%s/dependencies", name, version)
+	url := fmt.Sprintf("%s/api/v1/crates/%s/%s/dependencies", c.baseURL, name, version)
 	var resp DependenciesResponse
 	if err := c.getJSON(url, &resp); err != nil {
 		return nil, err
