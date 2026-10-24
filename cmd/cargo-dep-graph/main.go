@@ -46,7 +46,7 @@ func run(args []string) error {
 		return err
 	}
 
-	printGraph(cfg.PackageName, g)
+	printGraph(cfg.PackageName, g, cfg.Reverse)
 	return nil
 }
 
@@ -57,17 +57,29 @@ func buildGraph(cfg *config.Config) (*graph.Graph, error) {
 		FilterSubstring: cfg.FilterSubstring,
 	}
 
-	// Stage 3: test mode uses a local graph description file.
 	if cfg.TestMode {
-		deps, err := graph.LoadTestRepo(cfg.TestRepoPath)
-		if err != nil {
-			return nil, fmt.Errorf("load test repo (%s): %w", cfg.TestRepoPath, err)
-		}
-		depsFn := func(name string) []string { return deps[name] }
-		return graph.Build(cfg.PackageName, opts, depsFn), nil
+		return buildFromTestRepo(cfg, opts)
+	}
+	return buildFromCargo(cfg, opts)
+}
+
+// buildFromTestRepo builds a graph from a test repository file.
+func buildFromTestRepo(cfg *config.Config, opts graph.BuildOptions) (*graph.Graph, error) {
+	deps, err := graph.LoadTestRepo(cfg.TestRepoPath)
+	if err != nil {
+		return nil, fmt.Errorf("load test repo (%s): %w", cfg.TestRepoPath, err)
 	}
 
-	// Stage 2: fetch Cargo.toml and use its direct dependencies only.
+	if cfg.Reverse {
+		return graph.FindReverseDependencies(cfg.PackageName, opts, deps), nil
+	}
+
+	depsFn := func(name string) []string { return deps[name] }
+	return graph.Build(cfg.PackageName, opts, depsFn), nil
+}
+
+// buildFromCargo builds a graph from the direct dependencies of Cargo.toml.
+func buildFromCargo(cfg *config.Config, opts graph.BuildOptions) (*graph.Graph, error) {
 	tomlText, err := fetch.FetchCargoToml(cfg.RepositoryURL)
 	if err != nil {
 		return nil, fmt.Errorf("fetch manifest (%s): %w", cfg.RepositoryURL, err)
@@ -83,15 +95,11 @@ func buildGraph(cfg *config.Config) (*graph.Graph, error) {
 		return nil, fmt.Errorf("extract dependencies: %w", err)
 	}
 
-	// Build a one-level graph from the direct dependencies.
-	depsMap := make(map[string][]string)
-	for _, d := range deps {
-		depsMap[d.Name] = nil
-	}
 	directNames := make([]string, 0, len(deps))
 	for _, d := range deps {
 		directNames = append(directNames, d.Name)
 	}
+	depsMap := make(map[string][]string)
 	depsMap[cfg.PackageName] = directNames
 
 	depsFn := func(name string) []string { return depsMap[name] }
@@ -107,13 +115,22 @@ func printConfig(cfg *config.Config) {
 }
 
 // printGraph writes the dependency graph in a simple textual form.
-func printGraph(pkg string, g *graph.Graph) {
-	fmt.Printf("\n=== Dependency graph of %s ===\n", pkg)
+func printGraph(pkg string, g *graph.Graph, reverse bool) {
+	title := "Dependency graph"
+	if reverse {
+		title = "Reverse dependency graph"
+	}
+	fmt.Printf("\n=== %s of %s ===\n", title, pkg)
 
+	if g.Len() == 0 {
+		fmt.Println("(none)")
+		return
+	}
+
+	// Print root first if visible.
 	if g.HasNode(pkg) && !g.IsHidden(pkg) {
 		printNode(pkg, g)
 	}
-
 	for _, name := range g.Nodes() {
 		if name == pkg {
 			continue
@@ -122,6 +139,7 @@ func printGraph(pkg string, g *graph.Graph) {
 	}
 }
 
+// printNode writes a single node and its direct dependencies.
 func printNode(name string, g *graph.Graph) {
 	deps := g.Node(name).Dependencies
 	if len(deps) == 0 {
