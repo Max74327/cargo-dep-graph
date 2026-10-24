@@ -9,6 +9,7 @@ import (
 	"cargo-dep-graph/internal/cargo"
 	"cargo-dep-graph/internal/config"
 	"cargo-dep-graph/internal/fetch"
+	"cargo-dep-graph/internal/graph"
 	"cargo-dep-graph/internal/toml"
 )
 
@@ -40,32 +41,61 @@ func run(args []string) error {
 
 	printConfig(cfg)
 
-	source := cfg.RepositoryURL
-	if cfg.TestMode {
-		source = cfg.TestRepoPath
+	g, err := buildGraph(cfg)
+	if err != nil {
+		return err
 	}
 
-	tomlText, err := fetch.FetchCargoToml(source)
+	printGraph(cfg.PackageName, g)
+	return nil
+}
+
+// buildGraph creates the dependency graph based on the configuration.
+func buildGraph(cfg *config.Config) (*graph.Graph, error) {
+	opts := graph.BuildOptions{
+		MaxDepth:        cfg.MaxDepth,
+		FilterSubstring: cfg.FilterSubstring,
+	}
+
+	// Stage 3: test mode uses a local graph description file.
+	if cfg.TestMode {
+		deps, err := graph.LoadTestRepo(cfg.TestRepoPath)
+		if err != nil {
+			return nil, fmt.Errorf("load test repo (%s): %w", cfg.TestRepoPath, err)
+		}
+		depsFn := func(name string) []string { return deps[name] }
+		return graph.Build(cfg.PackageName, opts, depsFn), nil
+	}
+
+	// Stage 2: fetch Cargo.toml and use its direct dependencies only.
+	tomlText, err := fetch.FetchCargoToml(cfg.RepositoryURL)
 	if err != nil {
-		return fmt.Errorf("fetch manifest (%s): %w", source, err)
+		return nil, fmt.Errorf("fetch manifest (%s): %w", cfg.RepositoryURL, err)
 	}
 
 	doc, err := toml.Parse(tomlText)
 	if err != nil {
-		return fmt.Errorf("parse manifest: %w", err)
+		return nil, fmt.Errorf("parse manifest: %w", err)
 	}
 
 	deps, err := cargo.ExtractDirectDependencies(doc)
-	if errors.Is(err, cargo.ErrNoDependencies) {
-		fmt.Printf("\n=== Direct dependencies of %s ===\n(none)\n", cfg.PackageName)
-		return nil
-	}
-	if err != nil {
-		return fmt.Errorf("extract dependencies: %w", err)
+	if err != nil && !errors.Is(err, cargo.ErrNoDependencies) {
+		return nil, fmt.Errorf("extract dependencies: %w", err)
 	}
 
-	printDependencies(cfg.PackageName, deps)
-	return nil
+	// Build a one-level graph from the direct dependencies.
+	depsMap := make(map[string][]string)
+	for _, d := range deps {
+		depsMap[d.Name] = nil
+	}
+	directNames := make([]string, 0, len(deps))
+	for _, d := range deps {
+		directNames = append(directNames, d.Name)
+	}
+	depsMap[cfg.PackageName] = directNames
+
+	depsFn := func(name string) []string { return depsMap[name] }
+	return graph.Build(cfg.PackageName, opts, depsFn), nil
 }
 
 // printConfig writes every user-configurable parameter as "key = value".
@@ -76,13 +106,27 @@ func printConfig(cfg *config.Config) {
 	}
 }
 
-func printDependencies(pkg string, deps []cargo.Dependency) {
-	fmt.Printf("\n=== Direct dependencies of %s ===\n", pkg)
+// printGraph writes the dependency graph in a simple textual form.
+func printGraph(pkg string, g *graph.Graph) {
+	fmt.Printf("\n=== Dependency graph of %s ===\n", pkg)
+
+	if g.HasNode(pkg) && !g.IsHidden(pkg) {
+		printNode(pkg, g)
+	}
+
+	for _, name := range g.Nodes() {
+		if name == pkg {
+			continue
+		}
+		printNode(name, g)
+	}
+}
+
+func printNode(name string, g *graph.Graph) {
+	deps := g.Node(name).Dependencies
 	if len(deps) == 0 {
-		fmt.Println("(none)")
+		fmt.Printf("- %s\n", name)
 		return
 	}
-	for _, d := range deps {
-		fmt.Printf("- %s\n", d.Name)
-	}
+	fmt.Printf("- %s -> %v\n", name, deps)
 }
