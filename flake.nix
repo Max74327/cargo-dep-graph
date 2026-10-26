@@ -63,10 +63,6 @@
             git
             gnumake
           ];
-          shellHook = ''
-            echo "cargo-dep-graph dev shell"
-            echo "Go: $(go version)"
-          '';
         };
 
         packages.default = pkgs.buildGoModule {
@@ -84,10 +80,6 @@
 
         # Каждая проверка — это make <target> в песочнице.
         checks = {
-          fmt = mkCheck "fmt-check";
-          vet = mkCheck "vet";
-          test = mkCheck "test";
-          lint = mkCheck "lint";
           check = mkCheck "check";
         };
       }
